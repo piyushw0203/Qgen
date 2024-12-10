@@ -66,6 +66,7 @@ def generate_summary(text, llm, max_length=8192):
                  "Ensure each question is unique and not repetitive. "
                  "Do not give any reasoning. Only stick to the QA format "
                  "Format:\nQuestion: Question?\n- A) Option A.\n- B) Option B.\n- C) Option C.\n- D) Option D.\nAnswer: Answer\n***\n"
+                 "Generate 5 Short answer questions and 5 long answer questions"
     )
 
     for chunk in tqdm(sentences, desc="Generating summaries"):
@@ -100,7 +101,7 @@ def main_loop(delay):
     while time.time() < end_time:
         try:
             # Extract text from a PDF file.
-            text = extract_text("E:/Ojal Didi Project/Ollama-qgen/Veronika Decides to Die.pdf")
+            text = extract_text("E:/Ojal Didi Project/test.pdf")
 
             # Generate and print the summary for the extracted text.
             summary = generate_summary(text, llm)
