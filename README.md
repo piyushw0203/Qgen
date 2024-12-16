@@ -1,4 +1,3 @@
-pip install streamlit
-pip install pyPDF2
+pip install streamlit pyPDF2
 
 streamlit run app.py
