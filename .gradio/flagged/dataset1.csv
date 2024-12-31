@@ -1,0 +1,12 @@
+Upload PDF,Max Length Per Chunk,"Model Name (e.g., llama3)",Temperature,Generated MCQs,timestamp
+.gradio\flagged\Upload PDF\c1070564bace9e0e501c\Veronika Decides to Die.pdf,4096,llama3,0.1,,2024-12-11 20:05:21.052967
+.gradio\flagged\Upload PDF\be266a34fafc3a284cd2\Veronika Decides to Die.pdf,4096,llama3,0.1,"Question: What will Veronika do with her life, according to her interior monologue?
+Answer: B
+Question: Why will Veronika eat her sandwiches with a sense of guilt?
+Answer: B
+Question: What will Veronika do to the children, according to her interior monologue?
+Answer: B
+Question: What will Veronika do with her life, according to her promise to herself?
+Answer: B
+Question: What will Veronika do with her time, according to her interior monologue?
+Answer: B",2024-12-11 20:09:09.306715

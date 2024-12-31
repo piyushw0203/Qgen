@@ -17,7 +17,12 @@ nlp = spacy.load("en_core_web_sm")
 llm = Ollama(model="llama3", temperature=0.2)
 
 # EasyOCR Reader
-reader = easyocr.Reader(['en'])
+reader = easyocr.Reader(['en'],gpu=True)
+
+import torch
+print("CUDA Available:", torch.cuda.is_available())
+print("CUDA Device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU found")
+
 
 def pdf_to_images(file_path, start_page, end_page,dpi=150):
     """
@@ -53,21 +58,45 @@ def generate_questions(extracted_text, question_counts):
             generated_output += f"--- {qtype} Questions ({count}) ---\n{questions}\n\n"
     return generated_output
 
+from reportlab.lib.pagesizes import letter
+import os
+
 def save_questions_to_pdf(output_text, file_name="generated_questions.pdf"):
     """
-    Save questions to a PDF using ReportLab.
+    Save questions to a PDF using ReportLab with proper text wrapping.
     """
-    c = canvas.Canvas(file_name)
+    c = canvas.Canvas(file_name, pagesize=letter)
+    width, height = letter
     c.setFont("Helvetica", 12)
-    y = 800  # Starting position
+    margin = 50  # Set margins
+    y = height - margin  # Start below the top margin
 
     for line in output_text.split("\n"):
-        if y < 50:  # Start a new page if space runs out
+        if y < margin:  # Start a new page if space runs out
             c.showPage()
             c.setFont("Helvetica", 12)
-            y = 800
-        c.drawString(50, y, line)
-        y -= 20
+            y = height - margin
+
+        # Wrap text if it exceeds the width
+        line_width = c.stringWidth(line, "Helvetica", 12)
+        max_width = width - 2 * margin
+        if line_width > max_width:
+            words = line.split(" ")
+            current_line = ""
+            for word in words:
+                test_line = f"{current_line} {word}".strip()
+                if c.stringWidth(test_line, "Helvetica", 12) <= max_width:
+                    current_line = test_line
+                else:
+                    c.drawString(margin, y, current_line)
+                    y -= 20
+                    current_line = word
+            if current_line:  # Draw the last part of the line
+                c.drawString(margin, y, current_line)
+                y -= 20
+        else:
+            c.drawString(margin, y, line)
+            y -= 20
 
     c.save()
     return file_name
@@ -122,13 +151,14 @@ with gr.Blocks() as demo:
     submit_button = gr.Button("Generate Questions")
     output_status = gr.Textbox(label="Status", interactive=False)
     output_questions = gr.Textbox(label="Generated Questions", lines=15)
+    preview_pdf = gr.File(label="Preview Generated PDF", interactive=False)
     download_button = gr.Button("Download PDF")
     download_file = gr.File(label="Download Questions PDF", interactive=False)
 
     generated_text = gr.State()
 
-    def save_to_pdf_for_download(questions_text):
-        pdf_file_path = save_questions_to_pdf(questions_text)
+    def save_to_pdf_for_preview(questions_text):
+        pdf_file_path = save_questions_to_pdf(questions_text, "preview_generated_questions.pdf")
         return pdf_file_path
 
     def handle_generation(file, start_page, end_page, *args):
@@ -141,18 +171,23 @@ with gr.Blocks() as demo:
         
         status, questions = process_pdf(file, start_page, end_page, question_counts)
         
-        # Return questions as the third output for 'generated_text' state
-        return status, questions, questions
+        # Generate PDF preview if questions are generated successfully
+        if questions.strip():
+            pdf_preview_path = save_to_pdf_for_preview(questions)
+        else:
+            pdf_preview_path = None
+        
+        return status, questions, questions, pdf_preview_path
 
 
     submit_button.click(
         fn=handle_generation,
         inputs=[file_input, start_page_input, end_page_input] + list(question_count_inputs.values()),
-        outputs=[output_status, output_questions, generated_text]
+        outputs=[output_status, output_questions, generated_text, preview_pdf]
     )
 
     download_button.click(
-        fn=save_to_pdf_for_download,
+        fn=save_to_pdf_for_preview,
         inputs=[generated_text],
         outputs=[download_file]
     )
