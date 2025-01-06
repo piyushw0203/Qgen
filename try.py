@@ -59,12 +59,15 @@ def generate_questions(extracted_text, question_counts):
     return generated_output
 
 from reportlab.lib.pagesizes import letter
-import os
 
 def save_questions_to_pdf(output_text, file_name="generated_questions.pdf"):
     """
     Save questions to a PDF using ReportLab with proper text wrapping.
     """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib import utils
+
     c = canvas.Canvas(file_name, pagesize=letter)
     width, height = letter
     c.setFont("Helvetica", 12)
@@ -101,6 +104,7 @@ def save_questions_to_pdf(output_text, file_name="generated_questions.pdf"):
     c.save()
     return file_name
 
+
 def process_pdf(file, start_page, end_page, question_counts):
     """
     Complete pipeline: Convert PDF to text and generate questions.
@@ -132,7 +136,10 @@ def process_pdf(file, start_page, end_page, question_counts):
 
 # Gradio UI
 with gr.Blocks() as demo:
-    gr.Markdown("## 📝 PDF to Question Generator")
+    # Add logo at the top
+    gr.Image("logo.jpg", elem_id="logo", label=None, show_label=False,interactive=False)
+
+    gr.Markdown("## AFTC Question Bank Generator")
     gr.Markdown("Upload a PDF, select page range, question types, and specify the count for each type.")
 
     with gr.Row():
@@ -151,14 +158,13 @@ with gr.Blocks() as demo:
     submit_button = gr.Button("Generate Questions")
     output_status = gr.Textbox(label="Status", interactive=False)
     output_questions = gr.Textbox(label="Generated Questions", lines=15)
-    preview_pdf = gr.File(label="Preview Generated PDF", interactive=False)
     download_button = gr.Button("Download PDF")
     download_file = gr.File(label="Download Questions PDF", interactive=False)
 
     generated_text = gr.State()
 
-    def save_to_pdf_for_preview(questions_text):
-        pdf_file_path = save_questions_to_pdf(questions_text, "preview_generated_questions.pdf")
+    def save_to_pdf_for_download(questions_text):
+        pdf_file_path = save_questions_to_pdf(questions_text)
         return pdf_file_path
 
     def handle_generation(file, start_page, end_page, *args):
@@ -168,26 +174,20 @@ with gr.Blocks() as demo:
         question_counts = {}
         for idx, qtype in enumerate(question_types):
             question_counts[qtype] = args[idx]
-        
-        status, questions = process_pdf(file, start_page, end_page, question_counts)
-        
-        # Generate PDF preview if questions are generated successfully
-        if questions.strip():
-            pdf_preview_path = save_to_pdf_for_preview(questions)
-        else:
-            pdf_preview_path = None
-        
-        return status, questions, questions, pdf_preview_path
 
+        status, questions = process_pdf(file, start_page, end_page, question_counts)
+
+        # Return questions as the third output for 'generated_text' state
+        return status, questions, questions
 
     submit_button.click(
         fn=handle_generation,
         inputs=[file_input, start_page_input, end_page_input] + list(question_count_inputs.values()),
-        outputs=[output_status, output_questions, generated_text, preview_pdf]
+        outputs=[output_status, output_questions, generated_text]
     )
 
     download_button.click(
-        fn=save_to_pdf_for_preview,
+        fn=save_to_pdf_for_download,
         inputs=[generated_text],
         outputs=[download_file]
     )
